@@ -186,6 +186,7 @@ class Upload
     {
         $file = UploadedFile::getInstanceByName('content');
         self::$file = $file;
+        
         //视频大小限制
         if (($file->size > self::$video_limit) && (self::$video_limit > 0)) {
             Error('视频不能大于' . (self::$video_limit / 1024 / 1024) . 'MB');
@@ -194,22 +195,27 @@ class Upload
         $ext      = $file->getExtension();
         $path     = $this->get_url('video'); //获取当日目录
         self::$path = '/' . $path . '/' . md5(get_sn()) . ".{$ext}"; //设置视频路径
-        //本地上传
-        if (self::$upload_way == 0) {
-            // 进行文件移动
-            if (move_uploaded_file($video['tmp_name'], self::$root_path . '/web' . self::$path )) {
-                return ['url' => self::$path, 'size' => $video['size']];
+
+        if (in_array($ext, array('mp4', 'avi', 'mov'))) {
+            //本地上传
+            if (self::$upload_way == 0) {
+                // 进行文件移动
+                if (move_uploaded_file($video['tmp_name'], self::$root_path . '/web' . self::$path )) {
+                    return ['url' => self::$path, 'size' => $video['size']];
+                } else {
+                    Error('视频上传失败');
+                }
+            } elseif (self::$upload_way == 1)  {
+                return $this->saveToAliOss();
+            } elseif (self::$upload_way == 2)  {
+                return $this->saveToTxCos();
+            } elseif (self::$upload_way == 3)  {
+                return $this->saveToQiniu();
             } else {
-                Error('视频上传失败');
+                Error('暂不支持');
             }
-        } elseif (self::$upload_way == 1)  {
-            return $this->saveToAliOss();
-        } elseif (self::$upload_way == 2)  {
-            return $this->saveToTxCos();
-        } elseif (self::$upload_way == 3)  {
-            return $this->saveToQiniu();
         } else {
-            Error('暂不支持');
+            Error('不是视频类型');
         }
     }
 
